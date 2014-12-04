@@ -2,6 +2,7 @@ package com.quantweb.marketdata
 
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
+import com.quantweb.marketdata.SymbolActor.MarketDataUpdate
 import org.scalatest.{Matchers, FlatSpecLike}
 
 /**
@@ -15,10 +16,10 @@ class SymbolActorTest extends TestKit(ActorSystem("SymbolActorTest")) with FlatS
         val data1 = Map[String, Any]("bestAsk" -> 101, "bestAskSize" -> 1050, "bestBid" -> 99, "bestBidSize" -> 980, "timeStamp" -> "2014-10-20 13:15:21:99")
         val data2 = Map[String, Any]("bestAsk" -> 102, "bestAskSize" -> 1150, "bestBid" -> 99, "bestBidSize" -> 980, "timeStamp" -> "2014-10-20 13:15:24:99")
 
-        testActorRef ! data1
+        testActorRef ! MarketDataUpdate(data1)
         testActorRef.underlyingActor.data should be(data1)
 
-        testActorRef ! data2
+        testActorRef ! MarketDataUpdate(data2)
         testActorRef.underlyingActor.data should not be (data1)
         testActorRef.underlyingActor.data should be(data2)
     }
