@@ -7,6 +7,7 @@ lazy val root = (project in file(".")).settings(
     scalaVersion := "2.11.4",
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-actor" % "2.3.7" withSources() withJavadoc(),
-      "com.typesafe.akka" %% "akka-testkit" % "2.3.7" % "test" withSources() withJavadoc()
+      "com.typesafe.akka" %% "akka-testkit" % "2.3.7" % "test" withSources() withJavadoc(),
+      "org.scalatest" %% "scalatest" % "2.2.1" % "test" withSources() withJavadoc()
     )
   )
