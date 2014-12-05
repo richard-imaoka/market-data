@@ -37,6 +37,7 @@ class SymbolActor extends Actor {
      * register a new subscriber to this SymbolActor's routee
      */
     def registerSubscriber(subscriber: ActorRef) = router = router.addRoutee(subscriber)
+
 }
 
 object SymbolActor{
