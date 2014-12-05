@@ -45,22 +45,60 @@ class SymbolActorTest
         val data = Map[String, Any]("bestAsk" -> 101, "bestAskSize" -> 1250, "bestBid" -> 99, "bestBidSize" -> 980, "timeStamp" -> "2014-10-20 13:15:21:99")
 
         /**
-         * MarketDataUpdate sent to SymbolActor will be broadcast
-         */
-        testActorRef ! MarketDataUpdate(data)
-
-        /**
          * Broadcast to 3 subscribers - the same message is received 3 times
          */
+        testActorRef ! MarketDataUpdate(data)
         expectMsg[Map[String, Any]](1.seconds, data)
         expectMsg[Map[String, Any]](1.seconds, data)
         expectMsg[Map[String, Any]](1.seconds, data)
     }
 
     "SymbolActor" should "update internal state on partial Market Data update" in {
+        val testActorRef = TestActorRef[SymbolActor](Props(new SymbolActor))
+
+        /**
+         * Firstly SymbolActor holds "originalData", then receives "partialUpdate", which results in "updatedData" as SymbolActor's (internal) data
+         *
+         * (i.e.) originalData + partialUpdate = updatedData
+         */
+        val originalData  = Map[String, Any]("bestAsk" -> 101, "bestAskSize" -> 1050, "bestBid" -> 99, "bestBidSize" -> 980, "timeStamp" -> "2014-10-20 13:15:21:99")
+        val partialUpdate = Map[String, Any]("bestAsk" -> 102, "bestAskSize" -> 1150, "timeStamp" -> "2014-10-20 13:15:24:99")
+        val updatedData   = Map[String, Any]("bestAsk" -> 102, "bestAskSize" -> 1150, "bestBid" -> 99, "bestBidSize" -> 980, "timeStamp" -> "2014-10-20 13:15:24:99")
+
+        testActorRef.underlyingActor.data = originalData
+
+        testActorRef ! MarketDataUpdate(partialUpdate)
+
+        testActorRef.underlyingActor.data should be (updatedData)
     }
 
     "SymbolActor" should "broadcast partial Market Data update" in {
+        val testActorRef = TestActorRef[SymbolActor](Props(new SymbolActor))
+
+        val subscriberActorRef1 = system.actorOf(Props(new PassThroughActor(testActor)))
+        val subscriberActorRef2 = system.actorOf(Props(new PassThroughActor(testActor)))
+        val subscriberActorRef3 = system.actorOf(Props(new PassThroughActor(testActor)))
+
+        testActorRef.underlyingActor.registerSubscriber(subscriberActorRef1)
+        testActorRef.underlyingActor.registerSubscriber(subscriberActorRef2)
+        testActorRef.underlyingActor.registerSubscriber(subscriberActorRef3)
+
+        /**
+         * Firstly SymbolActor holds "originalData", then receives "partialUpdate"
+         */
+        val originalData  = Map[String, Any]("bestAsk" -> 101, "bestAskSize" -> 1050, "bestBid" -> 99, "bestBidSize" -> 980, "timeStamp" -> "2014-10-20 13:15:21:99")
+        val partialUpdate = Map[String, Any]("bestAsk" -> 102, "bestAskSize" -> 1150, "timeStamp" -> "2014-10-20 13:15:24:99")
+
+        testActorRef.underlyingActor.data = originalData
+
+        /**
+         * Broadcast to 3 subscribers - the same message is received 3 times
+         * if partial update is sent to SymbolActor, then partial update is broadcast, not the entire (internal) 'data' of SymbolActor
+         */
+        testActorRef ! MarketDataUpdate( partialUpdate )
+        expectMsg[Map[String, Any]](1.seconds, partialUpdate)
+        expectMsg[Map[String, Any]](1.seconds, partialUpdate)
+        expectMsg[Map[String, Any]](1.seconds, partialUpdate)
     }
 
     "SymbolActor" should "send entire data upon request" in {

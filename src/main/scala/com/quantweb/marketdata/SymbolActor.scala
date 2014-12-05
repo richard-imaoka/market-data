@@ -18,10 +18,18 @@ class SymbolActor extends Actor {
 
     override def receive = {
         case MarketDataUpdate(receivedData) => {
-            data = receivedData
 
-            if( router.routees.size > 0 ) //route with empty routee (= NoRoutee) will cause the message sent to DeadLetter offfice
-                router.route(data, self)
+            /**
+             * receivedData can be partial update. So merge it with the original 'data'
+             * if the same key exists in both 'data' and 'receivedData', receivedData values are preferred
+             */
+            data = data ++ receivedData
+
+            /**
+             * route() with empty routee (= NoRoutee) will cause the message sent to DeadLetter offfice
+             */
+            if( router.routees.size > 0 )
+                router.route(receivedData, self)
         }
     }
 
