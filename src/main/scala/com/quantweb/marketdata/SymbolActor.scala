@@ -2,7 +2,7 @@ package com.quantweb.marketdata
 
 import akka.actor.{ActorRef, Actor}
 import akka.routing.{BroadcastRoutingLogic, Router}
-import com.quantweb.marketdata.SymbolActor.{SendEntireData, MarketDataUpdate}
+import com.quantweb.marketdata.SymbolActor.{SubscriptionRequest, SendEntireData, MarketDataUpdate}
 
 /**
  * Created by Richard S, Imaoka on 2014/11/30.
@@ -34,7 +34,16 @@ class SymbolActor extends Actor {
                 router.route(receivedData, self)
         }
         case SendEntireData(ref) => {
+            /**
+             * send the entire internal data back to ref
+             */
             ref ! data
+        }
+        case SubscriptionRequest(subscriber) => {
+            /**
+             * register a new subscriber to this SymbolActor's routee
+             */
+            router = router.addRoutee(subscriber)
         }
     }
 
@@ -46,6 +55,8 @@ class SymbolActor extends Actor {
 }
 
 object SymbolActor{
-    case class MarketDataUpdate( data: Map[String, Any] )
-    case class SendEntireData( ref: ActorRef )
+    sealed abstract class SymbolActorMessage
+    case class MarketDataUpdate( data: Map[String, Any] ) extends SymbolActorMessage
+    case class SendEntireData( ref: ActorRef ) extends SymbolActorMessage
+    case class SubscriptionRequest( subscriber: ActorRef ) extends SymbolActorMessage
 }
