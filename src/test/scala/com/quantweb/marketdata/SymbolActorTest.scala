@@ -147,26 +147,4 @@ class SymbolActorTest
         symbolActorRef.underlyingActor.router.routees should contain (ActorRefRoutee(subscriberActorRef3))
     }
 
-    it should "allow a single subscriber to subscribe to multiple SymbolActors" in {
-        val symbolActorRef1 = TestActorRef[SymbolActor](Props(new SymbolActor))
-        val symbolActorRef2 = TestActorRef[SymbolActor](Props(new SymbolActor))
-        val symbolActorRef3 = TestActorRef[SymbolActor](Props(new SymbolActor))
-
-        /**
-         * A single actor = testActor subscribes to multiple SymbolActors
-         */
-        symbolActorRef1 ! SubscriptionRequest( testActor )
-        symbolActorRef2 ! SubscriptionRequest( testActor )
-        symbolActorRef3 ! SubscriptionRequest( testActor )
-
-        symbolActorRef1.underlyingActor.router.routees.size should be (1)
-        symbolActorRef1.underlyingActor.router.routees should contain (ActorRefRoutee(testActor))
-
-        symbolActorRef2.underlyingActor.router.routees.size should be (1)
-        symbolActorRef2.underlyingActor.router.routees should contain (ActorRefRoutee(testActor))
-
-        symbolActorRef3.underlyingActor.router.routees.size should be (1)
-        symbolActorRef3.underlyingActor.router.routees should contain (ActorRefRoutee(testActor))
-    }
-
 }
