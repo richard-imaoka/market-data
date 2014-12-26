@@ -44,7 +44,7 @@ class SymbolActor extends Actor {
              * register a new subscriber to this SymbolActor's routee
              */
             router = router.addRoutee(subscriber)
-            subscriber ! SubscriptionSuccess
+            subscriber ! SubscriptionSuccess(self)
         }
     }
 
@@ -60,5 +60,5 @@ object SymbolActor{
     case class MarketDataUpdate( data: Map[String, Any] ) extends SymbolActorMessage
     case class SendEntireData( ref: ActorRef ) extends SymbolActorMessage
     case class SubscriptionRequest( subscriber: ActorRef ) extends SymbolActorMessage
-    case object SubscriptionSuccess extends SymbolActorMessage
+    case class SubscriptionSuccess( publisher: ActorRef ) extends SymbolActorMessage
 }

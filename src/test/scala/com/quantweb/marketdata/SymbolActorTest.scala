@@ -137,9 +137,9 @@ class SymbolActorTest
         symbolActorRef ! SubscriptionRequest( subscriberActorRef2 )
         symbolActorRef ! SubscriptionRequest( subscriberActorRef3 )
 
-        expectMsg[SymbolActorMessage](1.seconds, SubscriptionSuccess)
-        expectMsg[SymbolActorMessage](1.seconds, SubscriptionSuccess)
-        expectMsg[SymbolActorMessage](1.seconds, SubscriptionSuccess)
+        expectMsg[SymbolActorMessage](1.seconds, SubscriptionSuccess(symbolActorRef))
+        expectMsg[SymbolActorMessage](1.seconds, SubscriptionSuccess(symbolActorRef))
+        expectMsg[SymbolActorMessage](1.seconds, SubscriptionSuccess(symbolActorRef))
 
         symbolActorRef.underlyingActor.router.routees.size should be (3)
         symbolActorRef.underlyingActor.router.routees should contain (ActorRefRoutee(subscriberActorRef1))

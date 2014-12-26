@@ -1,6 +1,6 @@
 package com.quantweb.marketdata
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Cancellable, Actor, ActorRef}
 import com.quantweb.marketdata.SymbolActor.{SubscriptionSuccess, SubscriptionRequest}
 
 import scala.concurrent.ExecutionContext
@@ -16,9 +16,11 @@ trait SubscriptionTrait extends {
      */
     this: Actor =>
 
-    case class SubscriptionRetry(publisher: ActorRef)
-
     val retryInterval: FiniteDuration = 1.second
+
+    val retryCount: Int = 60
+
+    var schedulerOption: Option[Cancellable] = None
 
     /**
      * Receive function when Subscription is not yet established
@@ -26,8 +28,10 @@ trait SubscriptionTrait extends {
      * SubscriptionSuccess => become(receiveAfterSubscription) where receiveAfterSubscription ignores SubscriptionRetry
      */
     def waitingForSubscriptionSuccess: Receive = {
-        case SubscriptionRetry(publisher) => subscribe(publisher)
-        case SubscriptionSuccess => context.become(receiveMarketData orElse receiveTerminationFromPublisher) //orElse handle SymbolActor's Terminated
+        case SubscriptionSuccess(publisher) => {
+            schedulerOption.foreach(x => x.cancel())
+            context.become(receiveMarketData orElse receiveTerminationFromPublisher) //orElse handle SymbolActor's Terminated
+        }
     }
 
     /**
@@ -48,9 +52,9 @@ trait SubscriptionTrait extends {
     def subscribe(publisher: ActorRef): Unit = {
         implicit val ec: ExecutionContext = context.dispatcher
 
-        println( "sending SubscriptionRequest to " + publisher)
-        publisher ! SubscriptionRequest(self)
-        context.system.scheduler.scheduleOnce(retryInterval, self, SubscriptionRetry)
+        schedulerOption.foreach(x => x.cancel())
+
+        schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, publisher, SubscriptionRequest(self)))
     }
 }
 
