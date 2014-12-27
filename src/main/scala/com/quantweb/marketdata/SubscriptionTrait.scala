@@ -10,6 +10,7 @@ import scala.concurrent.duration.DurationInt
 /**
  * Created by Richar S. Imaoka on 2014/12/07.
  */
+
 trait SubscriptionTrait extends {
     /**
      * Scala self-type annotation - this trait needs to be mixed into an Actor
@@ -22,15 +23,19 @@ trait SubscriptionTrait extends {
 
     var schedulerOption: Option[Cancellable] = None
 
+    object SubscriptionStop
+
     /**
      * Receive function when Subscription is not yet established
-     * SubscriptionRetry => subscribe(publisher), which sends SubscriptionRequest, ans SubscriptionRetry to self
+     * SubscriptionStop => stop repetitive SubscriptionRequest (i.e.) cancel the scheduler
      * SubscriptionSuccess => become(receiveAfterSubscription) where receiveAfterSubscription ignores SubscriptionRetry
      */
     def waitingForSubscriptionSuccess: Receive = {
+        case SubscriptionStop =>
+            schedulerOption.foreach(x => x.cancel())
         case SubscriptionSuccess(publisher) => {
             schedulerOption.foreach(x => x.cancel())
-            context.become(receiveMarketData orElse receiveTerminationFromPublisher) //orElse handle SymbolActor's Terminated
+            context.become(receiveTerminationFromPublisher orElse receiveTerminationFromPublisher orElse receiveMarketData)
         }
     }
 
@@ -54,7 +59,23 @@ trait SubscriptionTrait extends {
 
         schedulerOption.foreach(x => x.cancel())
 
-        schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, publisher, SubscriptionRequest(self)))
+        schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, new Runnable() {
+            var remainingRetries: Int = retryCount
+
+            /**
+             * Is it safe in multi-threads? -> YES
+             * publisher ActorRef is fixed until subscribe() is called again
+             * self is final val
+             * So, no chance that this method is sending to or from wrong ActorRef
+             */
+            override def run(): Unit = {
+                if (remainingRetries > 0)
+                    publisher ! SubscriptionRequest(self)
+                else
+                    self ! SubscriptionStop //the scheduler of this actor cannot be canceled from this run method, so send SubscriptionStop to self
+                remainingRetries = remainingRetries - 1
+            }
+        }))
     }
 }
 
