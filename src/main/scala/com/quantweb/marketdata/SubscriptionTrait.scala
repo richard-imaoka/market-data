@@ -10,6 +10,7 @@ import scala.concurrent.duration.DurationInt
 /**
  * Created by Richar S. Imaoka on 2014/12/07.
  */
+
 trait SubscriptionTrait extends {
     /**
      * Scala self-type annotation - this trait needs to be mixed into an Actor
@@ -54,7 +55,22 @@ trait SubscriptionTrait extends {
 
         schedulerOption.foreach(x => x.cancel())
 
-        schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, publisher, SubscriptionRequest(self)))
+        //schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, publisher, SubscriptionRequest(self)))
+        schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, new Runnable(){
+            var remainingRetries: Int = retryCount
+
+            /**
+             * Is it safe in multi-threads? -> YES
+             *     publisher ActorRef is fixed until subscribe() is called again
+             *     self is final val
+             * So, no chance that this method is sending to or from wrong ActorRef
+             */
+            override def run(): Unit ={
+                if( remainingRetries > 0 )
+                    publisher ! SubscriptionRequest(self)
+                remainingRetries = remainingRetries - 1
+            }
+        }))
     }
 }
 

@@ -1,9 +1,8 @@
 package com.quantweb.marketdata
 
 import akka.actor.{Actor, ActorSystem, Props}
-import akka.routing.ActorRefRoutee
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
-import com.quantweb.marketdata.SymbolActor.{SubscriptionRequest, SubscriptionSuccess, SymbolActorMessage}
+import com.quantweb.marketdata.SymbolActor.{SubscriptionRequest, SubscriptionSuccess}
 import org.scalatest.{FlatSpecLike, Matchers}
 
 import scala.concurrent.duration.{FiniteDuration, DurationInt}
@@ -13,9 +12,6 @@ import scala.concurrent.duration.{FiniteDuration, DurationInt}
  */
 
 class SubscriptionActor extends SubscriptionTrait with Actor{
-    override val retryInterval : FiniteDuration  = 100.milliseconds
-    override val retryCount : Int = 5
-
     override def receiveMarketData = {
         case a: String => sender() ! a
     }
@@ -54,5 +50,32 @@ class SubscriptionTraitTest
         expectMsg[String](5.milliseconds, "echo")
     }
 
-    //it should "keep sending SubscriptionRequest"
+    it should "keep sending SubscriptionRequest" in {
+        val subscriberActorRef1 = TestActorRef[SubscriptionActor](Props(new SubscriptionActor(){
+            override val retryInterval : FiniteDuration  = 1.milliseconds
+            override val retryCount : Int = 5
+            override def receiveMarketData = Actor.emptyBehavior
+        }))
+        subscriberActorRef1.underlyingActor.subscribe(testActor)
+
+        expectMsg[SubscriptionRequest](10.milliseconds, SubscriptionRequest(subscriberActorRef1))
+        expectMsg[SubscriptionRequest](10.milliseconds, SubscriptionRequest(subscriberActorRef1))
+        expectMsg[SubscriptionRequest](10.milliseconds, SubscriptionRequest(subscriberActorRef1))
+        expectMsg[SubscriptionRequest](10.milliseconds, SubscriptionRequest(subscriberActorRef1))
+        expectMsg[SubscriptionRequest](10.milliseconds, SubscriptionRequest(subscriberActorRef1))
+        expectNoMsg(10.milliseconds)
+    }
+
+    it should "stop repeating SubscriptionRequest on receipt of SubscriptionSuccess" in {
+        val subscriberActorRef1 = TestActorRef[SubscriptionActor](Props(new SubscriptionActor(){
+            override val retryInterval : FiniteDuration  = 10.milliseconds
+            override val retryCount : Int = 5
+            override def receiveMarketData = Actor.emptyBehavior
+        }))
+
+        subscriberActorRef1.underlyingActor.subscribe(testActor)
+        expectMsg[SubscriptionRequest](10.milliseconds, SubscriptionRequest(subscriberActorRef1))
+        subscriberActorRef1 ! SubscriptionSuccess(testActor)
+        expectNoMsg(10.milliseconds)
+    }
 }
