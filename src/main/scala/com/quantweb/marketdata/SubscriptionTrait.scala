@@ -58,9 +58,16 @@ trait SubscriptionTrait extends {
      */
     def subscribe(publisher: ActorRef): Unit = {
         implicit val ec: ExecutionContext = context.dispatcher
+        schedulerOption.foreach(x => x.cancel())
 
         schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, new Runnable{
             var remainingRetries: Int = retryCount
+            /**
+             * Is it safe in multi-threads? -> YES
+             *     publisher ActorRef is fixed until subscribe() is called again
+             *     self is final val
+             * So, no chance that this method is sending to or from wrong ActorRef
+             */
             override def run(): Unit = {
                 if(remainingRetries > 0)
                     publisher ! SubscriptionRequest(self)

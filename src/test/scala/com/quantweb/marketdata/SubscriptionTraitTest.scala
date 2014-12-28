@@ -1,6 +1,6 @@
 package com.quantweb.marketdata
 
-import akka.actor._
+import akka.actor.{Terminated, Actor, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
 import com.quantweb.marketdata.SymbolActor.{SubscriptionRequest, SubscriptionSuccess}
 import org.scalatest.{FlatSpecLike, Matchers}
