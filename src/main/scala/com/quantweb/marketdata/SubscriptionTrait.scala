@@ -21,9 +21,9 @@ trait SubscriptionTrait extends {
 
     val retryCount: Int = 60
 
-    var schedulerOption: Option[Cancellable] = None
-
     object SubscriptionStop
+
+    var schedulerOption: Option[Cancellable] = None
 
     /**
      * Receive function when Subscription is not yet established
@@ -31,10 +31,12 @@ trait SubscriptionTrait extends {
      * SubscriptionSuccess => become(receiveAfterSubscription) where receiveAfterSubscription ignores SubscriptionRetry
      */
     def waitingForSubscriptionSuccess: Receive = {
-        case SubscriptionStop =>
+        case SubscriptionStop => {
             schedulerOption.foreach(x => x.cancel())
+        }
         case SubscriptionSuccess(publisher) => {
-            schedulerOption.foreach(x => x.cancel())
+            schedulerOption.foreach( x => x.cancel() )
+            context.watch(publisher)
             context.become(receiveTerminationFromPublisher orElse receiveTerminationFromPublisher orElse receiveMarketData)
         }
     }
@@ -57,23 +59,14 @@ trait SubscriptionTrait extends {
     def subscribe(publisher: ActorRef): Unit = {
         implicit val ec: ExecutionContext = context.dispatcher
 
-        schedulerOption.foreach(x => x.cancel())
-
-        schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, new Runnable() {
+        schedulerOption = Some(context.system.scheduler.schedule(0.second, retryInterval, new Runnable{
             var remainingRetries: Int = retryCount
-
-            /**
-             * Is it safe in multi-threads? -> YES
-             * publisher ActorRef is fixed until subscribe() is called again
-             * self is final val
-             * So, no chance that this method is sending to or from wrong ActorRef
-             */
             override def run(): Unit = {
-                if (remainingRetries > 0)
+                if(remainingRetries > 0)
                     publisher ! SubscriptionRequest(self)
                 else
-                    self ! SubscriptionStop //the scheduler of this actor cannot be canceled from this run method, so send SubscriptionStop to self
-                remainingRetries = remainingRetries - 1
+                    self ! SubscriptionStop
+                remainingRetries = remainingRetries -1
             }
         }))
     }
